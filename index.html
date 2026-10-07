@@ -37,7 +37,7 @@ svg:not([width]){width:20px;height:20px;flex:none}
 header{position:sticky;top:0;z-index:6;padding:calc(env(safe-area-inset-top) + 16px) 18px 12px;display:flex;align-items:flex-end;gap:10px;
   background:linear-gradient(#000 55%,rgba(0,0,0,0))}
 header .t{flex:1;min-width:0}
-header h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em}
+header h1{margin:0;font-size:min(30px,6.4vw);font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .sub{color:var(--mut);font-size:14px;margin-top:2px}
 .ibtn{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);position:relative;flex:none}
@@ -217,7 +217,8 @@ nav button.on{color:#fff;background:rgba(255,255,255,.1)}
   transform:translateY(105%);overscroll-behavior:contain;visibility:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1),visibility 0s .3s}
 #sw.open #sheet{visibility:visible;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 #sw.open{pointer-events:auto} #sw.open .scrim{opacity:1} #sw.open #sheet{transform:none}
-.grab{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.2);margin:0 auto 12px}
+.grab{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.2);margin:0 auto 12px;position:relative}
+.grab::before{content:"";position:absolute;inset:-14px -80px}
 .sh{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .sh h2{flex:1;margin:0;font-size:21px;font-weight:700;min-width:0}
 .sh .ibtn{width:36px;height:36px}
@@ -295,7 +296,7 @@ code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-siz
 <script>
 'use strict';
 const APP_URL = 'https://simonsonstiges04-hue.github.io/Schulplaner/';
-const VERSION = '2.0';
+const VERSION = '2.1';
 
 /* =================== Hilfsfunktionen =================== */
 const $ = (s, el = document) => el.querySelector(s);
@@ -843,6 +844,11 @@ function lessonRow(l, state) {
     <div class="mid"><div class="ti">${esc(s.name)}${extra}</div><div class="me">${[l.room, l.t].filter(Boolean).map(esc).join(' · ')}</div></div>
     ${ex ? '<span class="badge x">Prüfung</span>' : ''}${hw.length ? `<span class="badge">${hw.length} HÜ</span>` : ''}</button>`;
 }
+function planDay() {
+  const t = today(), les = lessonsFor(t);
+  if (les.length && mins(hmNow()) < mins(les[les.length - 1].end)) return t;
+  return nextSchoolDay(t);
+}
 function planCard() {
   if (!data.settings.showTT) return '';
   const t = today(), m = mins(hmNow()), les = lessonsFor(t);
@@ -870,35 +876,36 @@ function planCard() {
   if (fl) head = `<div class="freebox" style="margin-bottom:${d ? 14 : 0}px"><div class="ic">${ic('sun')}</div><div><b>Schulfrei · ${esc(fl)}</b>
       <span class="muted small">${d ? 'Wieder Schule ' + (diffDays(t, d) === 1 ? 'morgen' : 'am ' + longDay(d)) : 'Genieß die freie Zeit'}</span></div></div>`;
   if (!d) return fl ? `<div class="card">${head}</div>` : '';
-  const nl = lessonsFor(d), hwN = nl.reduce((s, l) => s + hwFor(d, l.s).length, 0);
+  const nl = lessonsFor(d);
   const title = diffDays(t, d) === 1 ? 'Morgen' : relDay(d);
   return `<div class="card">${head}<h3>${esc(title)} · ${nl.length} Stunden <span class="rm">${nl[0].start}–${nl[nl.length - 1].end}</span></h3>
-    ${hwN ? `<div class="muted small" style="margin:-4px 0 6px">${hwN} HÜ fällig – schau, ob alles erledigt ist</div>` : ''}
     ${nl.map(l => lessonRow(l)).join('')}</div>`;
 }
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 function viewToday() {
   const t = today(), h = new Date().getHours();
-  const greet = h < 11 ? 'Guten Morgen' : h < 18 ? 'Hallo' : 'Guten Abend';
-  const open = openItems(), late = open.filter(i => i.due && i.due < t);
+  const open = openItems();
   const nextEx = data.exams.filter(x => x.date >= t).sort((a, b) => a.date.localeCompare(b.date))[0];
   let html = '';
   if (!connected()) html += `<button class="card banner" data-act="settings"><div style="color:var(--acc)">${ic('link')}</div>
     <div><b>Google Kalender verbinden</b><div class="muted">Bis dahin siehst du Beispieltermine. Tippe hier für die Einrichtung.</div></div></button>`;
   if (installEvt && !isStandalone()) html += `<button class="card banner" data-act="install"><div style="color:var(--acc)">${ic('dl')}</div>
     <div><b>Als App installieren</b><div class="muted">Eigenes Icon, Vollbild, Updates automatisch.</div></div></button>`;
-  html += `<div class="pills"><div class="pill">${esc(greet)}${cfg.name ? ', <b>' + esc(cfg.name) + '</b>' : ''}</div>
-    <div class="pill"><b>${open.length}</b> offen</div>${late.length ? `<div class="pill bad"><b>${late.length}</b> überfällig</div>` : ''}
-    ${nextEx ? `<div class="pill">${esc(subjName(nextEx.subject) || nextEx.title)} ${countdown(nextEx.date)}</div>` : ''}</div>`;
+  if (connected() && pushSupported() && !cfg.push && !cfg.pushNag) html += `<div class="card banner"><div style="color:var(--acc)">${ic('bell')}</div>
+    <div style="flex:1"><b>Erinnerungen aufs Handy</b><div class="muted">Damit du keine HÜ mehr vergisst – auch wenn die App zu ist.</div>
+    <div class="btns" style="margin-top:10px"><button class="btn pri" style="height:40px" data-act="pushon">Aktivieren</button><button class="btn" style="height:40px" data-act="pushnag">Später</button></div></div></div>`;
   html += planCard();
-  const due = open.filter(i => i.due && i.due <= shift(t, 1)).sort((a, b) => a.due.localeCompare(b.due));
-  html += `<div class="card"><h3>Zu erledigen <button class="r" data-act="tab" data-tab="tasks">Alle</button></h3>
-    ${due.length ? due.map(i => itemRow(i, true)).join('') : `<div class="empty">Nichts fällig bis morgen ✨</div>`}</div>`;
+  // HÜs stehen schon im Stundenplan – hier nur, was dort nicht sichtbar ist (überfällig, ohne Fach, kein Unterricht)
+  const pd = planDay(), until = pd && pd > shift(t, 1) ? pd : shift(t, 1);
+  const inPlan = i => data.settings.showTT && i.due === pd && lessonsFor(pd).some(l => l.s === i.subject);
+  const rest = open.filter(i => i.due && i.due <= until && !inPlan(i)).sort((a, b) => a.due.localeCompare(b.due));
+  if (rest.length) html += `<div class="card"><h3>${rest.every(i => i.due < t) ? 'Überfällig' : 'Noch offen'} <button class="r" data-act="tab" data-tab="tasks">Alle</button></h3>
+    ${rest.map(i => itemRow(i, true)).join('')}</div>`;
   html += chipsHTML();
   const ents = entriesFor(t).filter(e => e.k !== 'p' || e.it.type === 'event');
   html += `<div class="card"><h3>Termine heute</h3>${ents.length ? ents.map(entryRow).join('') : '<div class="empty">Keine Termine</div>'}</div>`;
-  if (nextEx) html += `<div class="grp" style="margin-top:4px">Nächste Prüfung</div>` + examCard(nextEx);
+  if (nextEx && diffDays(t, nextEx.date) <= 14) html += `<div class="grp" style="margin-top:4px">Nächste Prüfung</div>` + examCard(nextEx);
   const tm = entriesFor(shift(t, 1)).filter(e => e.k !== 'p' || e.it.type === 'event');
   html += `<div class="card"><h3>Morgen · ${longDay(shift(t, 1))}</h3>${tm.length ? tm.map(entryRow).join('') : '<div class="empty">Keine Termine</div>'}</div>`;
   return html;
@@ -926,17 +933,17 @@ function viewMonth() {
   for (let i = 0; i < rows * 7; i++) {
     const d = ymd(addD(start, i)), wd = pday(d).getDay(), out = d.slice(0, 7) !== ui.month;
     const fl = wd > 0 && wd < 6 ? freeLabel(d) : null;
-    const ents = entriesFor(d, { openOnly: true }), hw = ents.some(e => e.k === 'p' && e.it.type !== 'event');
+    const ents = entriesFor(d, { openOnly: true });
     const pills = ents.filter(e => !(e.k === 'p' && e.it.type !== 'event') && !(e.kind === 'free' || e.kind === 'hol'));
     const show = pills.slice(0, 2), more = pills.length - show.length;
     g += `<button class="mc ${out ? 'out' : ''} ${d === t ? 'today' : ''} ${d === ui.sel ? 'sel' : ''} ${fl ? 'free' : ''} ${wd === 0 || wd === 6 ? 'we' : ''}" data-act="day" data-d="${d}">
-      <span class="n">${pday(d).getDate()}</span>${hw ? '<span class="hwd"></span>' : ''}
+      <span class="n">${pday(d).getDate()}</span>
       ${show.map(e => `<span class="ev ${e.k === 'x' || e.kind === 'exam' ? 'x' : ''}" style="--c:${entryColor(e)}">${esc(entryTitle(e))}</span>`).join('')}
       ${more > 0 ? `<span class="more">+${more}</span>` : ''}</button>`;
   }
   let html = `<div class="card" style="padding:14px 8px 10px">${calNav(`${MON[m - 1]} ${y}`, '', 'month', 'mtoday').replace('class="mhead"', 'class="mhead" style="padding:0 6px"')}
     <div class="mgrid">${g}</div>
-    <div class="legend"><span><i style="background:rgba(74,222,128,.35)"></i>schulfrei</span><span><i style="background:var(--warn);border-radius:50%"></i>HÜ fällig</span><span><i style="background:${SCHOOL_C}"></i>Schule</span></div></div>`;
+    <div class="legend"><span><i style="background:rgba(74,222,128,.35)"></i>schulfrei</span><span><i style="background:${SCHOOL_C}"></i>Schule</span></div></div>`;
   html += dayDetail(ui.sel);
   return html;
 }
@@ -1059,7 +1066,7 @@ function viewStats() {
   const topics = data.exams.reduce((s, x) => s + (x.topics || []).filter(y => y.done).length, 0);
   let html = `<div class="kpis">
     <div class="kpi"><div class="v">${weekDone}</div><div class="l">diese Woche erledigt</div></div>
-    <div class="kpi"><div class="v">${open.length}</div><div class="l">offen${late.length ? ` · <span class="late">${late.length} überfällig</span>` : ''}</div></div>
+    <div class="kpi"><div class="v">${done.length}</div><div class="l">insgesamt erledigt</div></div>
     <div class="kpi"><div class="v">${withDue.length ? Math.round(onTime / withDue.length * 100) + '%' : '–'}</div><div class="l">pünktlich erledigt</div></div>
     <div class="kpi"><div class="v">${topics}</div><div class="l">Lernpunkte abgehakt</div></div></div>`;
   const weeks = []; for (let k = 7; k >= 0; k--) { const s = shift(ws, -7 * k); weeks.push({ s, e: shift(s, 6), n: 0 }); }
@@ -1088,10 +1095,6 @@ function viewStats() {
   html += `<div class="card"><h3>Nach Fach</h3>${per.length ? per.map(x => `<div class="hb"><div class="top"><span class="tag"><i style="background:${x.s.color}"></i>${esc(x.s.name)}</span>
     <span>${x.d}/${x.d + x.o} erledigt${x.o ? ` · <b style="color:var(--txt)">${x.o} offen</b>` : ''}</span></div>
     <div class="prog"><i style="width:${x.d / (x.d + x.o) * 100}%;background:${x.s.color}"></i></div></div>`).join('') : '<div class="empty">Noch keine Aufgaben</div>'}</div>`;
-  const ex = data.exams.filter(x => x.date >= t).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
-  if (ex.length) html += `<div class="card"><h3>Lernstand nächste Prüfungen</h3>${ex.map(x => { const p = examProg(x);
-    return `<button class="hb" data-act="exam" data-id="${x.id}"><div class="top"><span class="tag"><i style="background:${subjColor(x.subject)}"></i>${esc(x.title)}</span>
-      <span>${p.total ? Math.round(p.pct * 100) + '%' : '–'} · ${relDay(x.date)}</span></div><div class="prog"><i style="width:${p.pct * 100}%;background:${subjColor(x.subject)}"></i></div></button>`; }).join('')}</div>`;
   return html;
 }
 
@@ -1100,7 +1103,8 @@ const TABS = [['today', 'Heute', 'home'], ['cal', 'Kalender', 'cal'], ['tasks', 
 function render() {
   const t = today();
   const sync = connected() ? (cfg.lastSync ? 'Aktualisiert ' + new Date(cfg.lastSync).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) : '') : 'Beispieldaten';
-  const titles = { today: ['Heute', `${longDay(t)} · KW ${isoWeek(t)}`], cal: ['Kalender', sync], tasks: ['Aufgaben', `${data.items.filter(i => !i.done).length} offen`],
+  const h = new Date().getHours(), greet = (h < 11 ? 'Guten Morgen' : h < 18 ? 'Hallo' : 'Guten Abend') + (cfg.name ? ', ' + cfg.name : '');
+  const titles = { today: [greet, `${longDay(t)} · KW ${isoWeek(t)}`], cal: ['Kalender', sync], tasks: ['Aufgaben', 'Hausübungen & eigene Termine'],
     learn: ['Lernen', 'Schularbeiten, Tests & Matura'], stats: ['Statistik', 'Dein Fortschritt'] };
   const [ti, su] = titles[ui.tab] || titles.today;
   $('#ttl').textContent = ti; $('#sub').textContent = su;
@@ -1126,6 +1130,32 @@ function closeSheet(fromPop) {
   if (sheetOpen) { sheetOpen = false; if (!fromPop) try { history.back(); } catch (e) {} }
 }
 window.addEventListener('popstate', () => { if (sheetOpen) closeSheet(true); });
+/* Sheet nach unten wischen zum Schließen */
+(function sheetSwipe() {
+  const sh = $('#sheet'); let y0 = null, x0 = 0, dy = 0, t0 = 0, drag = false, fromTop = false;
+  sh.addEventListener('touchstart', e => {
+    if (!sheetOpen || e.touches.length !== 1) { y0 = null; return; }
+    const onHead = !!e.target.closest('.grab,.sh');
+    if (!onHead && (sh.scrollTop > 0 || e.target.closest('textarea,select,input[type=range]'))) { y0 = null; return; }
+    y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; t0 = Date.now(); drag = false; fromTop = onHead;
+  }, { passive: true });
+  sh.addEventListener('touchmove', e => {
+    if (y0 == null) return;
+    dy = e.touches[0].clientY - y0; const dx = Math.abs(e.touches[0].clientX - x0);
+    if (!drag) {
+      if (dy > 8 && dy > dx && (fromTop || sh.scrollTop <= 0)) { drag = true; sh.style.transition = 'none'; if (document.activeElement) document.activeElement.blur(); }
+      else if (dy < -4 || dx > 10) { y0 = null; return; }
+    }
+    if (drag) { if (e.cancelable) e.preventDefault(); sh.style.transform = `translateY(${Math.max(0, dy)}px)`; $('#sw .scrim').style.opacity = Math.max(0, 1 - dy / 400); }
+  }, { passive: false });
+  const end = () => {
+    if (y0 == null) return; y0 = null; if (!drag) return; drag = false;
+    const v = dy / Math.max(1, Date.now() - t0);
+    sh.style.transition = ''; sh.style.transform = ''; $('#sw .scrim').style.opacity = '';
+    if (dy > 110 || (v > 0.5 && dy > 30)) closeSheet();
+  };
+  sh.addEventListener('touchend', end); sh.addEventListener('touchcancel', end);
+})();
 const sheetHead = (title, extra = '') => `<div class="sh"><h2>${title}</h2>${extra}<button class="ibtn" data-act="close" aria-label="Schließen">${ic('x')}</button></div>`;
 const subjChips = (cur, act, withNone) => `<div class="sjs">${withNone ? `<button class="sj ${!cur ? 'on' : ''}" style="--c:#888" data-act="${act}" data-id="">Keins</button>` : ''}
   ${data.subjects.map(s => `<button class="sj ${cur === s.id ? 'on' : ''}" style="--c:${s.color}" data-act="${act}" data-id="${s.id}"><i style="background:${s.color}"></i>${esc(s.name)}</button>`).join('')}</div>`;
@@ -1283,11 +1313,11 @@ function settingsSheet() {
       <li>Oben Funktion <code>setup</code> auswählen → <b>Ausführen</b> → Berechtigungen erlauben. Im Protokoll steht dein <b>Token</b>.</li>
       <li><b>Bereitstellen → Neue Bereitstellung</b> → Typ „Web-App“, Ausführen als: <b>Ich</b>, Zugriff: <b>Jeder</b> → URL kopieren.</li>
       <li>URL und Token hier eintragen → Verbinden.</li>
+      <li>Für Benachrichtigungen auch <code>appsscript.json</code> übernehmen (Projekteinstellungen → „appsscript.json im Editor anzeigen“).</li>
     </ol><div class="muted small">Das Skript kann deine Kalender nur lesen, nichts eintragen. Deine HÜs liegen gesichert in deinem Google-Konto, nicht im Familienkalender.</div></details>
   </div>
   <div class="set"><h4>App</h4>
     ${installEvt && !isStandalone() ? `<button class="btn pri full" style="margin-bottom:8px" data-act="install">${ic('dl')} App installieren</button>` : ''}
-    ${'Notification' in window && Notification.permission !== 'granted' ? `<button class="btn full" style="margin-bottom:8px" data-act="notif">${ic('bell')} Benachrichtigungen erlauben</button>` : ''}
     <div class="muted small">Version ${VERSION}${isStandalone() ? ' · installiert' : ''}. Updates kommen automatisch beim Öffnen.</div>
   </div>
   <div class="set"><h4>Stundenplan</h4>
@@ -1306,13 +1336,18 @@ function settingsSheet() {
       <button class="tgl ${visible(c.id) ? 'on' : ''}" data-act="layer" data-id="${esc(c.id)}" aria-label="Anzeigen"></button></div>`; }).join('')}
     ${connected() ? '' : '<div class="muted small">Nach dem Verbinden erscheinen hier deine echten Kalender.</div>'}
   </div>
-  <div class="set"><h4>Erinnerungen</h4>
+  <div class="set"><h4>Benachrichtigungen</h4>
+    ${pushSupported() ? `<div class="trow"><div>Erinnerungen aufs Handy<div class="muted small">${cfg.push ? 'Aktiv auf diesem Gerät' : 'Aus'}</div></div>
+      <button class="tgl ${cfg.push ? 'on' : ''}" data-act="${cfg.push ? 'pushoff' : 'pushon'}" aria-label="Benachrichtigungen"></button></div>
+      ${cfg.push ? `<button class="btn full" style="margin-bottom:6px" data-act="pushtest">${ic('bell')} Test-Benachrichtigung schicken</button>` : ''}
+      <div class="status" id="pStat"></div>`
+    : '<div class="muted small" style="margin-bottom:12px">Benachrichtigungen gehen nur in der installierten App am Handy.</div>'}
     <div class="f"><label>Standard für neue Hausübungen</label><select class="in" id="sDef" data-chg="sdef">
       ${[['none', 'Keine'], ['eve', 'Am Vortag, 18:00'], ['morning', 'Am Tag, 07:00']].map(([v, n]) => `<option value="${v}" ${data.settings.defRemind === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-    <div class="f"><label>Abend-Übersicht per Mail (was morgen fällig ist)</label><select class="in" id="sDig" data-chg="sdig">
+    <div class="f"><label>Abend-Übersicht (was bis morgen fällig ist)</label><select class="in" id="sDig" data-chg="sdig">
       <option value="" ${data.settings.digestHour == null ? 'selected' : ''}>Aus</option>
       ${[15, 16, 17, 18, 19, 20, 21].map(h => `<option value="${h}" ${data.settings.digestHour === h ? 'selected' : ''}>um ${h}:00</option>`).join('')}</select></div>
-    <div class="muted small">Erinnerungen kommen als Gmail-Benachrichtigung – auch wenn die App zu ist. Solange die App offen ist, erscheinen sie zusätzlich hier.</div>
+    <div class="muted small">Erinnerungen kommen als normale Benachrichtigung aufs Handy, auch wenn die App zu ist (bis zu 5 Minuten Verzögerung).</div>
   </div>
   <div class="set"><h4>Fächer</h4>
     ${data.subjects.map(s => `<div class="lrow"><button class="sw" style="background:${s.color}" data-act="scolor" data-id="${s.id}" aria-label="Farbe ändern"></button>
@@ -1431,7 +1466,14 @@ const ACT = {
   stgl: d => { data.settings[d.k] = !data.settings[d.k]; _freeCache.key = ''; commit(); if (d.k === 'autoSchool') syncExams(); },
   install: async () => { if (!installEvt) { toast('Im Chrome-Menü ⋮ → „App installieren“ wählen'); return; }
     installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; render(); redrawSheet(); },
-  notif: async () => { try { const p = await Notification.requestPermission(); toast(p === 'granted' ? 'Benachrichtigungen an' : 'Nicht erlaubt'); } catch (e) {} redrawSheet(); },
+  pushon: async (d, el) => { el.disabled = true; try { await enablePush(); toast('Benachrichtigungen aktiv ✓'); } catch (e) { toast(e.message); }
+    render(); redrawSheet(); if (e_last) pushMsg(e_last, true); },
+  pushoff: async () => { await disablePush(); toast('Benachrichtigungen aus'); render(); redrawSheet(); },
+  pushnag: () => { cfg.pushNag = true; saveCfg(); render(); },
+  pushtest: async () => { pushMsg('Sende …');
+    try { const r = await api({ action: 'testpush' });
+      const ok = r.sent > 0; pushMsg(ok ? 'Gesendet ✓ – die Benachrichtigung sollte gleich kommen.' : 'Fehler beim Senden: ' + (r.codes || []).join(', '), !ok); }
+    catch (e) { pushMsg(e.message === 'Unbekannte Aktion' ? 'Dein Google-Skript ist noch die alte Version – bitte aktualisieren.' : e.message, true); } },
   copylink: async () => { const s = setupLink();
     try { await navigator.clipboard.writeText(s); toast('Link kopiert – nur an dich selbst schicken'); }
     catch (e) { openSheet(() => sheetHead('Einrichtungs-Link') + `<textarea class="in" style="min-height:140px" readonly>${esc(s)}</textarea>`); } },
@@ -1478,12 +1520,80 @@ document.addEventListener('change', e => {
   if (el.id === 'sName') { cfg.name = el.value.trim(); saveCfg(); render(); }
 });
 
+/* =================== Benachrichtigungen (Web Push über dein Google-Skript) =================== */
+const kv = (() => {
+  const open = () => new Promise((res, rej) => { const r = indexedDB.open('schulplaner', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('kv', mode); const q = fn(t.objectStore('kv'));
+    t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); };
+  return { get: k => tx('readonly', s => s.get(k)), set: (k, v) => tx('readwrite', s => s.put(v, k)) };
+})();
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64uStr = str => b64u(new TextEncoder().encode(str));
+const pushSupported = () => location.protocol === 'https:' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+let e_last = '';
+function pushMsg(m, err) { const el = $('#pStat'); if (el) { el.className = 'status ' + (err ? 'err' : 'ok'); el.textContent = m; } }
+async function vapidKeys() {
+  let k = await kv.get('vapid');
+  if (!k) {
+    const kp = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+    k = { priv: kp.privateKey, pub: b64u(await crypto.subtle.exportKey('raw', kp.publicKey)) };
+    await kv.set('vapid', k);
+  }
+  return k;
+}
+async function pushRegister() {
+  const keys = await vapidKeys(), reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (sub && sub.options && sub.options.applicationServerKey && b64u(sub.options.applicationServerKey) !== keys.pub) { await sub.unsubscribe(); sub = null; }
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true,
+    applicationServerKey: Uint8Array.from(atob(keys.pub.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)) });
+  // Vorab signierte Schlüssel für die nächsten 30 Tage (je 12 h) – so braucht das Google-Skript keinen eigenen Krypto-Code
+  const aud = new URL(sub.endpoint).origin, now = Math.floor(Date.now() / 1000), head = b64uStr(JSON.stringify({ typ: 'JWT', alg: 'ES256' })), jwts = [];
+  for (let i = 1; i <= 60; i++) {
+    const exp = now + i * 12 * 3600;
+    const body = head + '.' + b64uStr(JSON.stringify({ aud, exp, sub: 'mailto:simon.poettschacher@gmail.com' }));
+    const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, keys.priv, new TextEncoder().encode(body));
+    jwts.push({ exp, t: body + '.' + b64u(sig) });
+  }
+  if (!cfg.devId) cfg.devId = uid();
+  await api({ action: 'pushsub', dev: cfg.devId, name: /Android/i.test(navigator.userAgent) ? 'Handy' : 'PC', sub: sub.toJSON(), pub: keys.pub, jwts }, true);
+  await kv.set('conf', { url: cfg.url, token: cfg.token });
+  cfg.push = true; cfg.pushAt = Date.now(); saveCfg();
+}
+async function enablePush() {
+  e_last = '';
+  try {
+    if (!pushSupported()) throw new Error('Geht nur in der installierten App am Handy');
+    if (!connected()) throw new Error('Zuerst Google Kalender verbinden');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') throw new Error('Benachrichtigungen sind blockiert – in den Handy-Einstellungen für die App erlauben');
+    await pushRegister();
+  } catch (e) {
+    e_last = e.message === 'Unbekannte Aktion' ? 'Dein Google-Skript ist noch die alte Version – bitte zuerst aktualisieren' : (e.message || String(e));
+    throw new Error(e_last);
+  }
+}
+async function disablePush() {
+  try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (e) {}
+  try { if (cfg.devId) await api({ action: 'pushoff', dev: cfg.devId }); } catch (e) {}
+  cfg.push = false; saveCfg();
+}
+async function refreshPush() {
+  if (!cfg.push || !pushSupported() || !connected()) return;
+  try {
+    if (Notification.permission !== 'granted') { cfg.push = false; saveCfg(); return; }
+    await kv.set('conf', { url: cfg.url, token: cfg.token });
+    if (Date.now() - (cfg.pushAt || 0) > 20 * 3600e3) await pushRegister();
+  } catch (e) {}
+}
+
 /* =================== Erinnerungen, solange die App offen ist =================== */
 async function notify(msg) {
   try {
     if (!window.Notification || Notification.permission !== 'granted') return;
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
-    if (reg) reg.showNotification('Schulplaner', { body: msg, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' });
+    if (reg) reg.showNotification('Schulplaner', { body: msg, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png' });
     else new Notification('Schulplaner', { body: msg });
   } catch (e) {}
 }
@@ -1508,7 +1618,7 @@ if (!TABS.some(([k]) => k === ui.tab)) ui.tab = 'today';
 render();
 if (window.__linked) toast('Verbunden ✓ Lade deinen Kalender …');
 if (new URLSearchParams(location.search).has('neu')) { try { history.replaceState(null, '', location.pathname); } catch (e) {} setTimeout(() => editItem(null), 300); }
-if (connected()) fullSync(false);
+if (connected()) fullSync(false).then(refreshPush);
 setInterval(checkLocal, 30e3); setTimeout(checkLocal, 1500);
 setInterval(() => { if (document.visibilityState === 'visible' && ui.tab === 'today' && !sheetOpen) render(); }, 60e3);
 let lastDay = today();
