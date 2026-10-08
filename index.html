@@ -277,6 +277,55 @@ code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-siz
   padding:12px 18px;border-radius:18px;background:rgba(40,40,48,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   border:1px solid rgba(255,255,255,.12);font-size:14px;transition:transform .3s cubic-bezier(.2,.8,.2,1);box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #toast.show{transform:translate(-50%,0)}
+/* Startseite: Abschnitte */
+.sec{display:flex;align-items:center;gap:9px;font-size:19px;font-weight:700;margin:6px 4px 10px;letter-spacing:-.01em}
+.sec svg{width:20px;height:20px;color:var(--acc)}
+.sec.p svg{color:#c084fc}
+.sec + .card{margin-top:0}
+.sec.gap{margin-top:22px}
+.sub2{font-size:12px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 2px}
+.sub2:first-of-type{margin-top:0}
+
+/* Kalender: fester Bildschirm, Tagesinfo zum Hochwischen */
+body.fixed{overflow:hidden;overscroll-behavior:none}
+body.fixed #fab{display:none}
+main.calfix{height:calc(100dvh - var(--hdr, 88px));padding-bottom:calc(84px + env(safe-area-inset-bottom));display:flex;flex-direction:column;overflow:hidden}
+main.calfix > .seg{flex:none}
+main.calfix > .chips{flex:none;padding-bottom:8px}
+main.calfix .chip{height:30px;font-size:13px;padding:0 11px}
+.calbox{flex:1;min-height:0;display:flex;flex-direction:column;touch-action:none}
+.gcard{flex:1;min-height:0;display:flex;flex-direction:column;margin-bottom:0;padding:12px 8px 8px}
+.gcard .mhead{flex:none;padding:0 6px}
+.mgrid.big{flex:1;min-height:0;grid-template-rows:auto;grid-auto-rows:minmax(0,1fr)}
+.mgrid.big .mc{min-height:0}
+.mc .dots{display:none;gap:3px;justify-content:center;margin-top:1px}
+.mc .dots i{width:5px;height:5px;border-radius:50%}
+.calbox.up .mc .ev,.calbox.up .mc .more{display:none}
+.calbox.up .mc .dots{display:flex}
+.calbox.up .mc{align-items:center;padding:1px 2px;gap:1px}
+.calbox.up .mc .n{width:21px;height:21px;font-size:12.5px;margin:0}
+.calbox.up .mgrid .wd{padding-bottom:2px}
+/* Woche: aufgeklappt bleibt nur die Tagesleiste, die Stunden stehen dann in der Tagesinfo */
+.calbox.wkm.up .gcard{flex:none}
+.calbox.wkm.up .dpanel{flex:1;height:auto}
+.calbox.wkm.up .wk .lc,.calbox.wkm.up .wk .pn,.calbox.wkm.up .wk .fc,.calbox.wkm.up .wk .adc{display:none}
+.calbox.wkm.up .wk.big{flex:none;grid-template-rows:auto!important;row-gap:0}
+.wk.big{flex:1;min-height:0}
+.wk.big .lc{min-height:0}
+.wk .hd{border-radius:12px}
+.wk .hd.sel{background:var(--card2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.dpanel{flex:none;height:62px;margin-top:8px;border-radius:24px;background:rgba(255,255,255,.06);border:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);transition:height .34s cubic-bezier(.2,.8,.2,1)}
+.calbox.up .dpanel{height:60%}
+.dpanel .ph{flex:none;display:flex;align-items:center;gap:10px;padding:6px 10px 8px 16px;position:relative;width:100%}
+.dpanel .ph::before{content:"";position:absolute;top:6px;left:50%;width:38px;height:4px;margin-left:-19px;border-radius:2px;background:rgba(255,255,255,.25)}
+.dpanel .ph .t{flex:1;min-width:0;padding-top:10px}
+.dpanel .ph .t b{display:block;font-size:15px}
+.dpanel .ph .t span{font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.dpanel .ph .addb{width:38px;height:38px;border-radius:14px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;flex:none;margin-top:8px}
+.dpanel .ph .addb svg{width:20px;height:20px;stroke-width:2.4}
+.dpanel .pb{flex:1;overflow-y:auto;touch-action:pan-y;padding:0 16px 14px;overscroll-behavior:contain;opacity:0;transition:opacity .2s}
+.calbox.up .dpanel .pb{opacity:1}
 @media (min-width:560px){ .mc{min-height:84px} .ev{font-size:11px;line-height:16px;height:16px} .lc{min-height:52px} }
 </style>
 </head>
@@ -296,7 +345,7 @@ code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-siz
 <script>
 'use strict';
 const APP_URL = 'https://simonsonstiges04-hue.github.io/Schulplaner/';
-const VERSION = '2.1';
+const VERSION = '2.2';
 
 /* =================== Hilfsfunktionen =================== */
 const $ = (s, el = document) => el.querySelector(s);
@@ -400,9 +449,12 @@ const OLD_MAP = { 'Mathe': 'M', 'Deutsch': 'D', 'Englisch': 'E', 'Spanisch': 'SP
   'Physik': 'PH', 'Chemie': 'CH', 'Psychologie & Philosophie': 'PUP', 'Sport': 'SP' };
 
 function freshData() {
-  return { v: 2, updatedAt: 0, items: [], exams: [], subjects: SUBJECTS_DEF.map(s => Object.assign({}, s)),
-    tt: JSON.parse(JSON.stringify(TT_DEF)), kinds: {}, dismissed: {},
-    settings: { digestHour: 18, defRemind: 'eve', autoSchool: true, showTT: true, ttEnd: '' } };
+  return { v: 3, updatedAt: 0, items: [], exams: [], subjects: SUBJECTS_DEF.map(s => Object.assign({}, s)),
+    tt: JSON.parse(JSON.stringify(TT_DEF)), kinds: {}, dismissed: {}, arch: freshArch(),
+    settings: { digestHour: 18, defRemind: 'd1', defRemindTime: '16:00', autoSchool: true, showTT: true, ttEnd: '' } };
+}
+/* Zähler für die Jahresstatistik – erledigte HÜs werden 7 Tage nach Fälligkeit gelöscht und nur hier mitgezählt */
+function freshArch() { return { n: 0, onTime: 0, withDue: 0, subj: {}, weeks: {}, months: {} };
 }
 function migrate(d) {
   const f = freshData();
@@ -419,11 +471,44 @@ function migrate(d) {
     d.subjects = f.subjects.concat(keep);
     d.tt = f.tt; d.v = 2;
   }
+  if (d.v < 3) {
+    // Einmaliges Aufräumen: alle erledigten Aufgaben und Beispieldaten weg, Statistik startet frisch
+    d.items = (d.items || []).filter(i => !i.done && !i.sample);
+    d.exams = (d.exams || []).filter(x => !x.sample);
+    d.arch = freshArch();
+    d.items.forEach(migrateRemind);
+    d.settings = Object.assign({}, d.settings || {}, { defRemind: 'd1', defRemindTime: '16:00' });
+    d.v = 3;
+  }
   d = Object.assign(f, d);
+  d.arch = Object.assign(freshArch(), d.arch || {});
   d.items = d.items || []; d.exams = d.exams || []; d.subjects = d.subjects || freshData().subjects;
   d.tt = d.tt || freshData().tt; d.kinds = d.kinds || {}; d.dismissed = d.dismissed || {};
   d.settings = Object.assign(freshData().settings, d.settings || {});
   return d;
+}
+
+/* alte Erinnerungs-Arten (eve/morning/custom) auf das neue Schema umstellen */
+function migrateRemind(i) {
+  if (i.remindMode === 'eve') { i.remindMode = 'd1'; i.remindTime = '18:00'; }
+  else if (i.remindMode === 'morning') { i.remindMode = 'd0'; i.remindTime = '07:00'; }
+  else if (i.remindMode === 'custom') { i.remindMode = 'date'; const c = i.remindCustom || i.remindAt || ''; i.remindDate = c.slice(0, 10); i.remindTime = c.slice(11, 16) || '16:00'; }
+}
+/* Erledigte HÜs 7 Tage nach Fälligkeit (bzw. Erledigung) ins Archiv – vergangene eigene Termine löschen */
+function archiveOld() {
+  if (connected() && !cfg.pulled) return;
+  const lim = shift(today(), -7), A = data.arch; let ch = false;
+  data.items = data.items.filter(i => {
+    if (i.type === 'event') { if (i.due && i.due < lim) { ch = true; return false; } return true; }
+    if (!i.done || (i.due || i.doneAt || '9') >= lim) return true;
+    const dn = i.doneAt || i.due;
+    A.n++; if (i.due && i.doneAt) { A.withDue++; if (i.doneAt <= i.due) A.onTime++; }
+    if (i.subject) A.subj[i.subject] = (A.subj[i.subject] || 0) + 1;
+    if (dn) { const w = weekStart(dn), m = dn.slice(0, 7); A.weeks[w] = (A.weeks[w] || 0) + 1; A.months[m] = (A.months[m] || 0) + 1; }
+    ch = true; return false;
+  });
+  const old = shift(today(), -120); for (const w in A.weeks) if (w < old) delete A.weeks[w];
+  if (ch) commit();
 }
 
 let data = migrate(LS.get('sp_data', null));
@@ -745,7 +830,7 @@ async function pullData() {
   const j = await api({ action: 'load' });
   const first = !cfg.pulled; cfg.pulled = true; saveCfg();
   if (j.data && ((j.data.updatedAt || 0) > (data.updatedAt || 0) || (first && !data.items.length && !data.exams.length))) {
-    const wasOld = !j.data.v || j.data.v < 2;
+    const wasOld = !j.data.v || j.data.v < 3;
     data = migrate(j.data); LS.set('sp_data', data); render();
     if (first) toast('Deine Daten aus der Google-Sicherung sind da');
     if (wasOld) await pushData();
@@ -754,7 +839,7 @@ async function pullData() {
 async function fullSync(force) {
   if (!connected()) { toast('Noch nicht verbunden – siehe Einstellungen'); return; }
   try {
-    setSync('busy'); await pullData();
+    setSync('busy'); await pullData(); archiveOld();
     await scanYear(force);
     await loadWindow(ui.month, force && !cal.scanAt);
     syncExams(); setSync('ok'); render();
@@ -884,9 +969,8 @@ function planCard() {
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 function viewToday() {
-  const t = today(), h = new Date().getHours();
+  const t = today(), tm = shift(t, 1);
   const open = openItems();
-  const nextEx = data.exams.filter(x => x.date >= t).sort((a, b) => a.date.localeCompare(b.date))[0];
   let html = '';
   if (!connected()) html += `<button class="card banner" data-act="settings"><div style="color:var(--acc)">${ic('link')}</div>
     <div><b>Google Kalender verbinden</b><div class="muted">Bis dahin siehst du Beispieltermine. Tippe hier für die Einrichtung.</div></div></button>`;
@@ -895,20 +979,43 @@ function viewToday() {
   if (connected() && pushSupported() && !cfg.push && !cfg.pushNag) html += `<div class="card banner"><div style="color:var(--acc)">${ic('bell')}</div>
     <div style="flex:1"><b>Erinnerungen aufs Handy</b><div class="muted">Damit du keine HÜ mehr vergisst – auch wenn die App zu ist.</div>
     <div class="btns" style="margin-top:10px"><button class="btn pri" style="height:40px" data-act="pushon">Aktivieren</button><button class="btn" style="height:40px" data-act="pushnag">Später</button></div></div></div>`;
+
+  /* ---------- Schule ---------- */
+  html += `<div class="sec">${ic('school')}Schule</div>`;
   html += planCard();
-  // HÜs stehen schon im Stundenplan – hier nur, was dort nicht sichtbar ist (überfällig, ohne Fach, kein Unterricht)
-  const pd = planDay(), until = pd && pd > shift(t, 1) ? pd : shift(t, 1);
+  // HÜs, die nicht schon im Stundenplan stehen (überfällig, ohne Fach, kein Unterricht an dem Tag)
+  const pd = planDay(), until = pd && pd > tm ? pd : tm;
   const inPlan = i => data.settings.showTT && i.due === pd && lessonsFor(pd).some(l => l.s === i.subject);
   const rest = open.filter(i => i.due && i.due <= until && !inPlan(i)).sort((a, b) => a.due.localeCompare(b.due));
   if (rest.length) html += `<div class="card"><h3>${rest.every(i => i.due < t) ? 'Überfällig' : 'Noch offen'} <button class="r" data-act="tab" data-tab="tasks">Alle</button></h3>
     ${rest.map(i => itemRow(i, true)).join('')}</div>`;
-  html += chipsHTML();
-  const ents = entriesFor(t).filter(e => e.k !== 'p' || e.it.type === 'event');
-  html += `<div class="card"><h3>Termine heute</h3>${ents.length ? ents.map(entryRow).join('') : '<div class="empty">Keine Termine</div>'}</div>`;
-  if (nextEx && diffDays(t, nextEx.date) <= 14) html += `<div class="grp" style="margin-top:4px">Nächste Prüfung</div>` + examCard(nextEx);
-  const tm = entriesFor(shift(t, 1)).filter(e => e.k !== 'p' || e.it.type === 'event');
-  html += `<div class="card"><h3>Morgen · ${longDay(shift(t, 1))}</h3>${tm.length ? tm.map(entryRow).join('') : '<div class="empty">Keine Termine</div>'}</div>`;
+  // Prüfungen (14 Tage) und Schultermine (7 Tage)
+  const rows = [], seen = new Set();
+  for (let i = 0; i <= 14; i++) {
+    const d = shift(t, i);
+    entriesFor(d).forEach(e => {
+      if (e.k === 'x') { if (!seen.has(e.x.id)) { seen.add(e.x.id); rows.push(examRow(e.x)); } return; }
+      if (e.k !== 'g' || !(e.kind === 'school' || e.kind === 'exam') || i > 7) return;
+      const k = evKey(e.ev); if (seen.has(k)) return; seen.add(k);
+      rows.push(schoolRow(e.ev, d));
+    });
+  }
+  if (rows.length) html += `<div class="card" style="padding:12px 16px 4px"><h3>Prüfungen & Schultermine</h3>${rows.join('')}</div>`;
+
+  /* ---------- Privat & Familie ---------- */
+  const priv = d => entriesFor(d).filter(e => (e.k === 'p' && e.it.type === 'event') || (e.k === 'g' && (!e.kind || e.kind === 'hol')));
+  const pt = priv(t), pm = priv(tm);
+  html += `<div class="sec p gap">${ic('home')}Privat & Familie</div>
+    <div class="card"><div class="sub2">Heute</div>${pt.length ? pt.map(entryRow).join('') : '<div class="empty" style="padding:10px">Nichts geplant</div>'}
+    <div class="sub2" style="margin-top:12px">Morgen · ${WDL[pday(tm).getDay()]}</div>${pm.length ? pm.map(entryRow).join('') : '<div class="empty" style="padding:10px">Nichts geplant</div>'}</div>`;
   return html;
+}
+function schoolRow(ev, day) {
+  const d = pday(day), k = kindOf(ev), c = k === 'exam' ? (subjColor(subjFromTitle(ev.title)) || SCHOOL_C) : SCHOOL_C;
+  const sd = ev.start.slice(0, 10), multi = ev.allDay && shift(ev.end.slice(0, 10), -1) > sd;
+  return `<button class="xrow" data-act="event" data-key="${esc(evKey(ev))}"><div class="dt"><b>${d.getDate()}</b><span>${MONS[d.getMonth()]}</span></div>
+    <div class="bar" style="width:4px;align-self:stretch;border-radius:2px;background:${c}"></div>
+    <div class="mid"><div class="ti">${esc(cleanTitle(ev.title))}</div><div class="cd" style="margin-top:1px">${WDL[d.getDay()]}${sd < day ? ' · läuft' : ''}${multi ? ' · bis ' + shortDay(shift(ev.end.slice(0, 10), -1)) : ''}${!ev.allDay ? ' · ' + ev.start.slice(11, 16) : ''}</div></div></button>`;
 }
 
 /* =================== Ansicht: Kalender =================== */
@@ -918,12 +1025,32 @@ function calNav(label, sub, act, todayAct) {
     <button class="ibtn" data-act="${act}" data-n="-1" aria-label="Zurück">${ic('l')}</button><button class="ibtn" data-act="${act}" data-n="1" aria-label="Weiter">${ic('r')}</button></div>`;
 }
 function viewCal() {
-  let html = `<div class="seg" style="margin-bottom:12px">${[['month', 'Monat'], ['week', 'Woche'], ['list', 'Liste']].map(([k, n]) =>
+  let html = `<div class="seg" style="margin-bottom:10px">${[['month', 'Monat'], ['week', 'Woche'], ['list', 'Liste']].map(([k, n]) =>
     `<button class="${ui.calMode === k ? 'on' : ''}" data-act="calmode" data-m="${k}">${n}</button>`).join('')}</div>`;
   html += chipsHTML();
   if (ui.calMode === 'list') return html + viewList();
   if (ui.calMode === 'week') return html + viewWeek();
   return html + viewMonth();
+}
+/* Tagesinfo unten – mit Wisch nach oben aufklappen */
+function dayPanel(day, extra = '') {
+  const e = entriesFor(day), les = lessonsFor(day), fl = freeLabel(day), wd = pday(day).getDay();
+  const hw = e.filter(x => x.k === 'p' && x.it.type !== 'event' && !x.it.done).length, other = e.length - e.filter(x => x.k === 'p' && x.it.type !== 'event').length;
+  const sum = [les.length ? les.length + ' Stunden' : (fl && wd > 0 && wd < 6 ? fl : ''), hw ? hw + ' HÜ' : '', other ? other + (other === 1 ? ' Termin' : ' Termine') : ''].filter(Boolean).join(' · ') || 'Nichts eingetragen';
+  return `<div class="dpanel"><div class="ph"><button class="t" data-act="ptoggle" style="text-align:left"><b>${Math.abs(diffDays(today(), day)) <= 1 ? relDay(day) + ' · ' : ''}${longDay(day)}</b><span>${esc(sum)}</span></button>
+    <button class="addb" data-act="add" data-d="${day}" aria-label="Neuer Eintrag">${ic('plus')}</button></div>
+    <div class="pb">${dayBody(day)}${extra}</div></div>`;
+}
+function dayBody(day) {
+  const e = entriesFor(day), les = lessonsFor(day), fl = freeLabel(day), wd = pday(day).getDay();
+  let body = '';
+  if (les.length && ui.calMode === 'week') { const m = mins(hmNow()), t = today();
+    body += `<div class="sub2">Stundenplan</div>` + les.map(l => lessonRow(l, day < t || (day === t && mins(l.end) <= m) ? 'past' : day === t && mins(l.start) <= m && m < mins(l.end) ? 'now' : '')).join('') + (e.length ? '<div class="sub2" style="margin-top:12px">Termine & Aufgaben</div>' : ''); }
+  else if (les.length) body += `<button class="row" data-act="gowk" data-d="${day}"><div class="tm">${les[0].start}</div><div class="bar" style="background:linear-gradient(${les.map(l => subjColor(l.s)).join(',')})"></div>
+    <div class="mid"><div class="ti">Unterricht · ${les.length} Stunden</div><div class="me">${les.map(l => `<span class="tag"><i style="background:${subjColor(l.s)}"></i>${esc(l.code)}</span>`).join(' ')}</div></div><div class="dim" style="width:18px">${ic('r')}</div></button>`;
+  else if (fl && wd > 0 && wd < 6 && !e.some(x => x.kind === 'free' || x.kind === 'hol')) body += `<div class="row"><div class="tm"></div><div class="bar" style="background:${FREE_C}"></div><div class="mid"><div class="ti">${esc(fl)}</div><div class="me"><span class="badge ok">schulfrei</span></div></div></div>`;
+  body += e.map(entryRow).join('');
+  return body || '<div class="empty">Nichts eingetragen</div>';
 }
 function viewMonth() {
   const [y, m] = ui.month.split('-').map(Number);
@@ -935,29 +1062,17 @@ function viewMonth() {
     const fl = wd > 0 && wd < 6 ? freeLabel(d) : null;
     const ents = entriesFor(d, { openOnly: true });
     const pills = ents.filter(e => !(e.k === 'p' && e.it.type !== 'event') && !(e.kind === 'free' || e.kind === 'hol'));
-    const show = pills.slice(0, 2), more = pills.length - show.length;
+    const show = pills.slice(0, 3), more = pills.length - show.length;
+    const dots = [...new Set(ents.filter(e => !(e.kind === 'free' || e.kind === 'hol')).map(e => e.k === 'p' && e.it.type !== 'event' ? 'var(--warn)' : entryColor(e)))].slice(0, 3);
     g += `<button class="mc ${out ? 'out' : ''} ${d === t ? 'today' : ''} ${d === ui.sel ? 'sel' : ''} ${fl ? 'free' : ''} ${wd === 0 || wd === 6 ? 'we' : ''}" data-act="day" data-d="${d}">
       <span class="n">${pday(d).getDate()}</span>
       ${show.map(e => `<span class="ev ${e.k === 'x' || e.kind === 'exam' ? 'x' : ''}" style="--c:${entryColor(e)}">${esc(entryTitle(e))}</span>`).join('')}
-      ${more > 0 ? `<span class="more">+${more}</span>` : ''}</button>`;
+      ${more > 0 ? `<span class="more">+${more}</span>` : ''}<span class="dots">${dots.map(c => `<i style="background:${c}"></i>`).join('')}</span></button>`;
   }
-  let html = `<div class="card" style="padding:14px 8px 10px">${calNav(`${MON[m - 1]} ${y}`, '', 'month', 'mtoday').replace('class="mhead"', 'class="mhead" style="padding:0 6px"')}
-    <div class="mgrid">${g}</div>
-    <div class="legend"><span><i style="background:rgba(74,222,128,.35)"></i>schulfrei</span><span><i style="background:${SCHOOL_C}"></i>Schule</span></div></div>`;
-  html += dayDetail(ui.sel);
-  return html;
+  return `<div class="calbox ${ui.panelUp ? 'up' : ''}"><div class="card gcard">${calNav(`${MON[m - 1]} ${y}`, '', 'month', 'mtoday')}
+    <div class="mgrid big">${g}</div></div>${dayPanel(ui.sel)}</div>`;
 }
-function dayDetail(day) {
-  const e = entriesFor(day), les = lessonsFor(day), fl = freeLabel(day), wd = pday(day).getDay();
-  let body = '';
-  if (les.length) body += `<button class="row" data-act="gowk" data-d="${day}"><div class="tm">${les[0].start}</div><div class="bar" style="background:linear-gradient(${les.map(l => subjColor(l.s)).join(',')})"></div>
-    <div class="mid"><div class="ti">Unterricht · ${les.length} Stunden</div><div class="me">${les.map(l => `<span class="tag"><i style="background:${subjColor(l.s)}"></i>${esc(l.code)}</span>`).join(' ')}</div></div><div class="dim" style="width:18px">${ic('r')}</div></button>`;
-  else if (fl && wd > 0 && wd < 6 && !e.some(x => x.kind === 'free' || x.kind === 'hol')) body += `<div class="row"><div class="tm"></div><div class="bar" style="background:${FREE_C}"></div><div class="mid"><div class="ti">${esc(fl)}</div><div class="me"><span class="badge ok">schulfrei</span></div></div></div>`;
-  body += e.map(entryRow).join('');
-  return `<div class="card"><h3>${Math.abs(diffDays(today(), day)) <= 1 ? relDay(day) + ' · ' : ''}${longDay(day)}
-    <button class="r" data-act="add" data-d="${day}">+ Eintrag</button></h3>
-    ${body || '<div class="empty">Nichts eingetragen</div>'}</div>`;
-}
+
 function curWeek() {
   if (ui.week) return ui.week;
   const t = today(), wd = pday(t).getDay();
@@ -966,7 +1081,8 @@ function curWeek() {
 function viewWeek() {
   const ws = curWeek(), t = today(), m = mins(hmNow()), days = [0, 1, 2, 3, 4].map(i => shift(ws, i)), T = data.tt.times;
   const de = shift(ws, 4);
-  let g = `<div></div>` + days.map(d => `<div class="hd ${d === t ? 'today' : ''}">${WD[pday(d).getDay()]}<b>${pday(d).getDate()}</b></div>`).join('');
+  if (ui.sel < ws || ui.sel > shift(ws, 6)) ui.sel = t >= ws && t <= shift(ws, 6) ? t : ws;
+  let g = `<div></div>` + days.map(d => `<button class="hd ${d === t ? 'today' : ''} ${d === ui.sel ? 'sel' : ''}" data-act="wsel" data-d="${d}">${WD[pday(d).getDay()]}<b>${pday(d).getDate()}</b></button>`).join('');
   // Ganztägiges (Prüfungen, Schultermine) über dem Raster
   const allDay = days.map(d => entriesFor(d).filter(e => e.all && !(e.kind === 'free' || e.kind === 'hol') && !(e.k === 'p' && e.it.type !== 'event')));
   if (allDay.some(a => a.length)) {
@@ -986,20 +1102,15 @@ function viewWeek() {
       const hw = hwFor(d, l.s), ex = examFor(d, l.s);
       const st = d < t || (d === t && mins(l.end) <= m) ? 'past' : d === t && mins(l.start) <= m && m < mins(l.end) ? 'now' : '';
       g += `<button class="lc ${st} ${ex ? 'ex' : ''}" style="--c:${subjColor(l.s)};grid-column:${col};grid-row:${R0 + l.p} / span ${l.n}" data-act="lesson" data-d="${d}" data-p="${l.p}">
-        <b>${esc(l.code)}</b><span>${esc(l.room || '')}</span><span>${esc(l.t || '')}</span>${hw.length ? `<i class="hw">${hw.length}</i>` : ''}${ex ? '<i class="xb">PRÜF.</i>' : ''}</button>`;
+        <b>${esc(l.code)}</b><span>${esc(l.room || l.t || '')}</span>${hw.length ? `<i class="hw">${hw.length}</i>` : ''}${ex ? '<i class="xb">PRÜF.</i>' : ''}</button>`;
     });
   });
-  const rows = `auto ${allDay.some(a => a.length) ? 'auto' : '0'} repeat(${T.length}, minmax(46px, auto))`;
-  let html = `<div class="card" style="padding:14px 10px 12px">${calNav(`KW ${isoWeek(ws)}`, `${pday(ws).getDate()}. ${MONS[pday(ws).getMonth()]} – ${pday(de).getDate()}. ${MONS[pday(de).getMonth()]} ${pday(de).getFullYear()}`, 'wk', 'wtoday').replace('class="mhead"', 'class="mhead" style="padding:0 4px"')}
-    <div class="wk" style="grid-template-rows:${rows}">${g}</div>
-    <div class="legend"><span><i style="background:var(--warn);border-radius:50%"></i>HÜ fällig</span><span><i style="background:var(--bad)"></i>Prüfung</span><span>Tippe auf eine Stunde für Details</span></div></div>`;
-  // Weitere Termine dieser Woche (inkl. Wochenende)
-  let more = '';
-  for (let i = 0; i < 7; i++) {
-    const d = shift(ws, i), e = entriesFor(d).filter(x => !x.all || (i > 4 && !(x.kind === 'free' || x.kind === 'hol')));
-    if (e.length) more += `<div class="grp">${relDay(d)}${Math.abs(diffDays(t, d)) <= 1 ? ' · ' + longDay(d) : ''}</div><div class="card" style="padding:4px 16px">${e.map(entryRow).join('')}</div>`;
-  }
-  return html + (more ? `<div class="grp" style="margin-top:8px;color:var(--txt);font-size:15px">Weitere Termine diese Woche</div>${more}` : '');
+  const rows = `auto ${allDay.some(a => a.length) ? 'auto' : '0'} repeat(${T.length}, minmax(0, 1fr))`;
+  // Wochenende unten in der Tagesinfo
+  let we = '';
+  [5, 6].forEach(i => { const d = shift(ws, i), e = entriesFor(d); if (e.length) we += `<div class="sub2" style="margin-top:14px">${longDay(d)}</div>${e.map(entryRow).join('')}`; });
+  return `<div class="calbox wkm ${ui.panelUp ? 'up' : ''}"><div class="card gcard">${calNav(`KW ${isoWeek(ws)}`, `${pday(ws).getDate()}. ${MONS[pday(ws).getMonth()]} – ${pday(de).getDate()}. ${MONS[pday(de).getMonth()]} ${pday(de).getFullYear()}`, 'wk', 'wtoday')}
+    <div class="wk big" style="grid-template-rows:${rows}">${g}</div></div>${dayPanel(ui.sel, ui.sel <= de ? we : '')}</div>`;
 }
 function viewList() {
   const t = today(); let body = '';
@@ -1020,10 +1131,11 @@ function viewTasks() {
     <button class="${ui.taskSeg === 'done' ? 'on' : ''}" data-act="seg" data-s="done">Erledigt</button></div>`;
   if (used.length > 1) html += `<div class="chips"><button class="chip ${!ui.subj ? 'on' : 'off'}" data-act="fsub" data-id="">Alle</button>${used.map(id =>
     `<button class="chip ${ui.subj === id ? 'on' : 'off'}" data-act="fsub" data-id="${id}"><span class="dot" style="background:${subjColor(id)}"></span>${esc(subjName(id))}</button>`).join('')}</div>`;
-  if (!list.length) return html + `<div class="card empty">${ui.taskSeg === 'open' ? 'Keine offenen Aufgaben 🎉<br><span class="small">Mit + legst du eine neue HÜ an.</span>' : 'Noch nichts erledigt.'}</div>`;
+  const note = '<div class="muted small" style="padding:4px 6px">Erledigtes verschwindet 7 Tage nach dem Fälligkeitsdatum und zählt nur noch in der Statistik.</div>';
+  if (!list.length) return html + `<div class="card empty">${ui.taskSeg === 'open' ? 'Keine offenen Aufgaben 🎉<br><span class="small">Mit + legst du eine neue HÜ an.</span>' : 'In den letzten 7 Tagen nichts erledigt.'}</div>${ui.taskSeg === 'done' ? note : ''}`;
   if (ui.taskSeg === 'done') {
     list.sort((a, b) => (b.doneAt || '').localeCompare(a.doneAt || ''));
-    return html + `<div class="card" style="padding:4px 16px">${list.slice(0, 80).map(i => itemRow(i, true)).join('')}</div>`;
+    return html + `<div class="card" style="padding:4px 16px">${list.map(i => itemRow(i, true)).join('')}</div>${note}`;
   }
   const we = shift(weekStart(t), 6);
   const groups = [['Überfällig', i => i.due && i.due < t, 'late'], ['Heute', i => i.due === t], ['Morgen', i => i.due === shift(t, 1)],
@@ -1056,45 +1168,49 @@ function viewLearn() {
 }
 
 /* =================== Ansicht: Statistik =================== */
-function viewStats() {
-  const t = today(), hw = data.items.filter(i => i.type !== 'event');
-  const done = hw.filter(i => i.done), open = hw.filter(i => !i.done), late = open.filter(i => i.due && i.due < t);
-  const withDue = done.filter(i => i.due && i.doneAt);
-  const onTime = withDue.filter(i => i.doneAt <= i.due).length;
-  const ws = weekStart(t);
-  const weekDone = done.filter(i => i.doneAt && i.doneAt >= ws).length;
-  const topics = data.exams.reduce((s, x) => s + (x.topics || []).filter(y => y.done).length, 0);
-  let html = `<div class="kpis">
-    <div class="kpi"><div class="v">${weekDone}</div><div class="l">diese Woche erledigt</div></div>
-    <div class="kpi"><div class="v">${done.length}</div><div class="l">insgesamt erledigt</div></div>
-    <div class="kpi"><div class="v">${withDue.length ? Math.round(onTime / withDue.length * 100) + '%' : '–'}</div><div class="l">pünktlich erledigt</div></div>
-    <div class="kpi"><div class="v">${topics}</div><div class="l">Lernpunkte abgehakt</div></div></div>`;
-  const weeks = []; for (let k = 7; k >= 0; k--) { const s = shift(ws, -7 * k); weeks.push({ s, e: shift(s, 6), n: 0 }); }
-  done.forEach(i => { const w = weeks.find(w => i.doneAt >= w.s && i.doneAt <= w.e); if (w) w.n++; });
-  const max = Math.max(4, ...weeks.map(w => w.n)), W = 340, H = 150, bw = 26, gap = (W - 30 - bw * 8) / 7;
-  const step = max <= 6 ? 2 : max <= 12 ? 4 : 5, top = Math.ceil(max / step) * step;
-  let svg = `<svg viewBox="0 0 ${W} ${H + 22}" width="100%" role="img" aria-label="Erledigte Aufgaben pro Woche">`;
-  for (let v = 0; v <= top; v += step) {
-    const y = H - (v / top) * (H - 10);
-    svg += `<line x1="26" x2="${W}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,${v ? .06 : .14})"/><text x="18" y="${y + 4}" text-anchor="end" fill="#62626c" font-size="11">${v}</text>`;
-  }
-  weeks.forEach((w, i) => {
-    const x = 30 + i * (bw + gap), h = (w.n / top) * (H - 10), y = H - h, cur = i === 7, sel = ui.statWeek === i;
-    const fill = cur ? ACC : 'rgba(139,156,255,.45)';
-    if (h > 0) svg += `<path d="M${x} ${H}V${y + Math.min(4, h)}a4 4 0 0 1 4-4h${bw - 8}a4 4 0 0 1 4 4V${H}z" fill="${fill}" ${sel ? 'stroke="#fff" stroke-width="1.5"' : ''}/>`;
-    svg += `<rect class="wbar" data-act="sweek" data-i="${i}" x="${x - gap / 2}" y="0" width="${bw + gap}" height="${H + 22}" fill="transparent"/>`;
-    svg += `<text x="${x + bw / 2}" y="${H + 16}" text-anchor="middle" fill="${cur ? '#f4f4f6' : '#62626c'}" font-size="11">${cur ? 'jetzt' : 'KW' + isoWeek(w.s)}</text>`;
-    if ((cur || sel) && w.n) svg += `<text x="${x + bw / 2}" y="${y - 6}" text-anchor="middle" fill="#f4f4f6" font-size="12" font-weight="600">${w.n}</text>`;
+function barChart(vals, labels, hi, sel, act) {
+  const n = vals.length, max = Math.max(4, ...vals), W = 340, H = 140, bw = Math.min(26, (W - 40) / n - 6), gap = (W - 30 - bw * n) / Math.max(1, n - 1);
+  const step = max <= 6 ? 2 : max <= 12 ? 4 : max <= 30 ? 10 : 20, top = Math.ceil(max / step) * step;
+  let svg = `<svg viewBox="0 0 ${W} ${H + 22}" width="100%" role="img">`;
+  for (let v = 0; v <= top; v += step) { const y = H - (v / top) * (H - 10);
+    svg += `<line x1="26" x2="${W}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,${v ? .06 : .14})"/><text x="18" y="${y + 4}" text-anchor="end" fill="#62626c" font-size="11">${v}</text>`; }
+  vals.forEach((c, i) => {
+    const x = 30 + i * (bw + gap), h = (c / top) * (H - 10), y = H - h, cur = i === hi;
+    if (h > 0) svg += `<path d="M${x} ${H}V${y + Math.min(4, h)}a4 4 0 0 1 4-4h${bw - 8}a4 4 0 0 1 4 4V${H}z" fill="${cur ? ACC : 'rgba(139,156,255,.45)'}" ${sel === i ? 'stroke="#fff" stroke-width="1.5"' : ''}/>`;
+    if (act) svg += `<rect class="wbar" data-act="${act}" data-i="${i}" x="${x - gap / 2}" y="0" width="${bw + gap}" height="${H + 22}" fill="transparent"/>`;
+    svg += `<text x="${x + bw / 2}" y="${H + 16}" text-anchor="middle" fill="${cur ? '#f4f4f6' : '#62626c'}" font-size="11">${labels[i]}</text>`;
+    if ((cur || sel === i) && c) svg += `<text x="${x + bw / 2}" y="${y - 6}" text-anchor="middle" fill="#f4f4f6" font-size="12" font-weight="600">${c}</text>`;
   });
-  svg += '</svg>';
+  return svg + '</svg>';
+}
+function viewStats() {
+  const t = today(), A = data.arch, hw = data.items.filter(i => i.type !== 'event');
+  const done = hw.filter(i => i.done), open = hw.filter(i => !i.done);
+  const withDue = done.filter(i => i.due && i.doneAt), onTime = withDue.filter(i => i.doneAt <= i.due).length + A.onTime, wd = withDue.length + A.withDue;
+  const ws = weekStart(t);
+  const inWeek = s => done.filter(i => i.doneAt && weekStart(i.doneAt) === s).length + (A.weeks[s] || 0);
+  const inMonth = m => done.filter(i => (i.doneAt || '').slice(0, 7) === m).length + (A.months[m] || 0);
+  const topics = data.exams.reduce((s, x) => s + (x.topics || []).filter(y => y.done).length, 0);
+  // Schuljahr: September bis Juli
+  const y0 = Number(t.slice(5, 7)) >= 8 ? Number(t.slice(0, 4)) : Number(t.slice(0, 4)) - 1;
+  const months = []; for (let k = 0; k < 11; k++) { const d = new Date(y0, 8 + k, 1); months.push(ymd(d).slice(0, 7)); }
+  const yearDone = months.reduce((s, m) => s + inMonth(m), 0);
+  let html = `<div class="kpis">
+    <div class="kpi"><div class="v">${inWeek(ws)}</div><div class="l">diese Woche erledigt</div></div>
+    <div class="kpi"><div class="v">${yearDone}</div><div class="l">dieses Schuljahr</div></div>
+    <div class="kpi"><div class="v">${wd ? Math.round(onTime / wd * 100) + '%' : '–'}</div><div class="l">pünktlich erledigt</div></div>
+    <div class="kpi"><div class="v">${topics}</div><div class="l">Lernpunkte abgehakt</div></div></div>`;
+  const weeks = []; for (let k = 7; k >= 0; k--) { const s = shift(ws, -7 * k); weeks.push({ s, e: shift(s, 6), n: inWeek(s) }); }
   const sw = ui.statWeek != null ? weeks[ui.statWeek] : null;
-  html += `<div class="card"><h3>Erledigte Aufgaben pro Woche</h3>${svg}
+  html += `<div class="card"><h3>Erledigte HÜs pro Woche</h3>${barChart(weeks.map(w => w.n), weeks.map((w, i) => i === 7 ? 'jetzt' : 'KW' + isoWeek(w.s)), 7, ui.statWeek, 'sweek')}
     <div class="chart-note">${sw ? `KW ${isoWeek(sw.s)} (${pday(sw.s).getDate()}.${pday(sw.s).getMonth() + 1}. – ${pday(sw.e).getDate()}.${pday(sw.e).getMonth() + 1}.): <b>${sw.n}</b> erledigt` : 'Tippe auf eine Woche für Details'}</div></div>`;
-  const per = data.subjects.map(s => ({ s, d: hw.filter(i => i.subject === s.id && i.done).length, o: hw.filter(i => i.subject === s.id && !i.done).length }))
-    .filter(x => x.d + x.o).sort((a, b) => b.o - a.o || (b.d + b.o) - (a.d + a.o));
-  html += `<div class="card"><h3>Nach Fach</h3>${per.length ? per.map(x => `<div class="hb"><div class="top"><span class="tag"><i style="background:${x.s.color}"></i>${esc(x.s.name)}</span>
-    <span>${x.d}/${x.d + x.o} erledigt${x.o ? ` · <b style="color:var(--txt)">${x.o} offen</b>` : ''}</span></div>
-    <div class="prog"><i style="width:${x.d / (x.d + x.o) * 100}%;background:${x.s.color}"></i></div></div>`).join('') : '<div class="empty">Noch keine Aufgaben</div>'}</div>`;
+  const mi = months.indexOf(t.slice(0, 7));
+  if (yearDone) html += `<div class="card"><h3>Schuljahr ${y0}/${String(y0 + 1).slice(2)}</h3>${barChart(months.map(inMonth), months.map(m => MONS[Number(m.slice(5)) - 1].replace('.', '').slice(0, 3)), mi)}</div>`;
+  const per = data.subjects.map(s => ({ s, d: hw.filter(i => i.subject === s.id && i.done).length + (A.subj[s.id] || 0), o: hw.filter(i => i.subject === s.id && !i.done).length }))
+    .filter(x => x.d + x.o).sort((a, b) => (b.d + b.o) - (a.d + a.o));
+  if (per.length) html += `<div class="card"><h3>Nach Fach</h3>${per.map(x => `<div class="hb"><div class="top"><span class="tag"><i style="background:${x.s.color}"></i>${esc(x.s.name)}</span>
+    <span>${x.d} erledigt${x.o ? ` · ${x.o} offen` : ''}</span></div>
+    <div class="prog"><i style="width:${x.d / (x.d + x.o) * 100}%;background:${x.s.color}"></i></div></div>`).join('')}</div>`;
   return html;
 }
 
@@ -1108,6 +1224,9 @@ function render() {
     learn: ['Lernen', 'Schularbeiten, Tests & Matura'], stats: ['Statistik', 'Dein Fortschritt'] };
   const [ti, su] = titles[ui.tab] || titles.today;
   $('#ttl').textContent = ti; $('#sub').textContent = su;
+  const fixed = ui.tab === 'cal' && ui.calMode !== 'list';
+  document.documentElement.style.setProperty('--hdr', $('header').offsetHeight + 'px');
+  $('#view').classList.toggle('calfix', fixed); document.body.classList.toggle('fixed', fixed);
   $('#view').innerHTML = ({ today: viewToday, cal: viewCal, tasks: viewTasks, learn: viewLearn, stats: viewStats })[ui.tab]();
   $('#nav').innerHTML = TABS.map(([k, n, i]) => `<button class="${ui.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${ic(i)}<span>${n}</span></button>`).join('');
 }
@@ -1156,10 +1275,37 @@ window.addEventListener('popstate', () => { if (sheetOpen) closeSheet(true); });
   };
   sh.addEventListener('touchend', end); sh.addEventListener('touchcancel', end);
 })();
+const haptic = (ms = 10) => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+function setPanel(up) { if (ui.panelUp === up) return; ui.panelUp = up; const b = $('.calbox'); if (b) b.classList.toggle('up', up); haptic(); }
+(function calSwipe() {
+  const v = $('#view'); let x0 = 0, y0 = 0, mode = null, inBody = null;
+  v.addEventListener('touchstart', e => {
+    if (!e.target.closest('.calbox') || e.touches.length !== 1) { mode = 'off'; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; mode = null; inBody = e.target.closest('.pb');
+  }, { passive: true });
+  v.addEventListener('touchmove', e => {
+    if (mode === 'off' || mode === 'done') return;
+    const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+    if (!mode) { if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; mode = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'; }
+    if (mode === 'v') {
+      // in der aufgeklappten Tagesinfo normal scrollen – erst ganz oben schließt ein Wisch nach unten
+      if (inBody && ui.panelUp && (dy < 0 || inBody.scrollTop > 0)) { mode = 'done'; return; }
+      if (e.cancelable) e.preventDefault();
+      if (dy < -36 && !ui.panelUp) { setPanel(true); mode = 'done'; }
+      else if (dy > 36 && ui.panelUp) { setPanel(false); mode = 'done'; }
+    } else {
+      if (inBody) { mode = 'done'; return; }
+      if (e.cancelable) e.preventDefault();
+      if (Math.abs(dx) > 60) { mode = 'done'; haptic(6); (ui.calMode === 'week' ? ACT.wk : ACT.month)({ n: dx < 0 ? 1 : -1 }); }
+    }
+  }, { passive: false });
+})();
 const sheetHead = (title, extra = '') => `<div class="sh"><h2>${title}</h2>${extra}<button class="ibtn" data-act="close" aria-label="Schließen">${ic('x')}</button></div>`;
 const subjChips = (cur, act, withNone) => `<div class="sjs">${withNone ? `<button class="sj ${!cur ? 'on' : ''}" style="--c:#888" data-act="${act}" data-id="">Keins</button>` : ''}
   ${data.subjects.map(s => `<button class="sj ${cur === s.id ? 'on' : ''}" style="--c:${s.color}" data-act="${act}" data-id="${s.id}"><i style="background:${s.color}"></i>${esc(s.name)}</button>`).join('')}</div>`;
 
+const REM_OPTS = [['none', 'Keine'], ['d0', 'Am Tag'], ['d1', '1 Tag vorher'], ['d2', '2 Tage vorher'], ['d7', '1 Woche vorher'], ['h1', '1 Std. vor Uhrzeit'], ['date', 'Eigenes Datum']];
+const REM_TIMES = ['07:00', '13:30', '16:00', '18:00', '20:00'];
 /* ---- Aufgabe / privater Termin ---- */
 let draft = null;
 function editItem(id, day, subj, afterDay) {
@@ -1167,13 +1313,15 @@ function editItem(id, day, subj, afterDay) {
   if (it) draft = JSON.parse(JSON.stringify(it));
   else {
     draft = { id: null, type: 'hw', title: '', subject: '', due: day || shift(today(), 1), time: '', notes: '',
-      remindMode: data.settings.defRemind || 'none', remindCustom: '', dueAuto: !day, from: afterDay && afterDay > today() ? afterDay : today() };
+      remindMode: data.settings.defRemind || 'none', remindTime: data.settings.defRemindTime || '16:00', remindDate: '', dueAuto: !day, from: afterDay && afterDay > today() ? afterDay : today() };
     const now = !subj && !day ? lessonNow() : null;
     const s = subj || (now && now.s !== 'SP' ? now.s : '');
     if (s) setDraftSubject(s);
   }
-  if (!draft.remindMode) draft.remindMode = draft.remindAt ? 'custom' : 'none';
-  if (draft.remindMode === 'custom' && !draft.remindCustom && draft.remindAt) draft.remindCustom = draft.remindAt;
+  migrateRemind(draft);
+  if (!draft.remindMode) draft.remindMode = draft.remindAt ? 'date' : 'none';
+  if (!draft.remindTime) draft.remindTime = (draft.remindAt || '').slice(11, 16) || data.settings.defRemindTime || '16:00';
+  if (draft.remindMode === 'date' && !draft.remindDate) draft.remindDate = (draft.remindAt || '').slice(0, 10) || shift(draft.due || today(), -1);
   openSheet(itemSheet);
 }
 function setDraftSubject(s) {
@@ -1192,29 +1340,38 @@ function itemSheet() {
   <div class="two"><div class="f"><label>${d.type === 'hw' ? 'Fällig am' : 'Datum'}</label><input class="in" type="date" id="fDue" value="${d.due || ''}"></div>
     <div class="f"><label>Uhrzeit (optional)</label><input class="in" type="time" id="fTime" value="${d.time || ''}"></div></div>
   ${nl.length ? `<div class="qd">${nl.map((l, i) => `<button class="${d.due === l.day ? 'on' : ''}" data-act="qdue" data-d="${l.day}">${i === 0 ? 'Nächste Stunde' : i === 1 ? 'Übernächste' : 'Danach'} · ${shortDay(l.day)}</button>`).join('')}</div>` : ''}
-  <div class="f"><label>Erinnerung</label><select class="in" id="fRem" data-chg="rem">
-    ${[['none', 'Keine'], ['eve', 'Am Vortag, 18:00'], ['morning', 'Am Tag, 07:00'], ['h1', '1 Stunde vorher (mit Uhrzeit)'], ['custom', 'Eigener Zeitpunkt …']]
-      .map(([v, n]) => `<option value="${v}" ${d.remindMode === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-  <div class="f" id="fCustomWrap" style="${d.remindMode === 'custom' ? '' : 'display:none'}"><label>Erinnern am</label>
-    <input class="in" type="datetime-local" id="fCustom" value="${d.remindCustom || ''}"></div>
+  ${remindFields(d)}
   <div class="f"><label>Notizen</label><textarea class="in" id="fNotes" placeholder="Details, Seitenzahlen, was zu beachten ist …">${esc(d.notes)}</textarea></div>
   <div class="btns">${d.id ? `<button class="btn danger" data-act="delitem">Löschen</button>` : ''}<button class="btn pri" data-act="saveitem">Speichern</button></div>`;
 }
 function readItemForm() {
   const due = $('#fDue').value; if (due !== draft.due) draft.dueAuto = false;
   draft.title = $('#fTitle').value.trim(); draft.due = due; draft.time = $('#fTime').value;
-  draft.notes = $('#fNotes').value; draft.remindMode = $('#fRem').value; draft.remindCustom = $('#fCustom').value;
+  draft.notes = $('#fNotes').value;
+  const rt = $('#fRemTime'), rd = $('#fRemDate'); if (rt && rt.value) draft.remindTime = rt.value; if (rd) draft.remindDate = rd.value;
+}
+function remindFields(d) {
+  const at = calcRemind(d);
+  return `<div class="f"><label>Erinnerung${at ? ` · <b style="color:${at < nowStr() ? 'var(--bad)' : 'var(--txt)'}">${relDay(at.slice(0, 10))}, ${at.slice(11, 16)}${at < nowStr() ? ' – schon vorbei' : ''}</b>` : ''}</label>
+    <div class="qd" style="margin:0">${REM_OPTS.filter(([v]) => v !== 'h1' || d.time || d.remindMode === 'h1').map(([v, n]) =>
+      `<button class="${d.remindMode === v ? 'on' : ''}" data-act="rmode" data-m="${v}">${n}</button>`).join('')}</div></div>
+  ${d.remindMode === 'none' || d.remindMode === 'h1' ? '' : `<div class="f">
+    ${d.remindMode === 'date' ? `<input class="in" type="date" id="fRemDate" value="${esc(d.remindDate || '')}" style="margin-bottom:8px">` : ''}
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="qd" style="margin:0;flex:1">${REM_TIMES.map(t =>
+      `<button class="${d.remindTime === t ? 'on' : ''}" data-act="rtime" data-t="${t}">${t}</button>`).join('')}</div>
+      <input class="in" type="time" id="fRemTime" value="${esc(d.remindTime || '16:00')}" style="width:118px;height:40px" aria-label="Eigene Uhrzeit"></div></div>`}`;
 }
 function calcRemind(d) {
-  if (!d.due && d.remindMode !== 'custom') return null;
-  switch (d.remindMode) {
-    case 'eve': return shift(d.due, -1) + 'T18:00';
-    case 'morning': return d.due + 'T07:00';
-    case 'h1': { if (!d.time) return d.due + 'T07:00'; const x = new Date(pday(d.due)); const [h, m] = d.time.split(':').map(Number); x.setHours(h - 1, m);
-      return `${ymd(x)}T${pad(x.getHours())}:${pad(x.getMinutes())}`; }
-    case 'custom': return d.remindCustom || null;
-    default: return null;
+  const tm = d.remindTime || '16:00';
+  if (d.remindMode === 'date') return d.remindDate ? d.remindDate + 'T' + tm : null;
+  if (!d.due || !d.remindMode || d.remindMode === 'none') return null;
+  if (d.remindMode === 'h1') {
+    if (!d.time) return d.due + 'T07:00';
+    const x = new Date(pday(d.due)); const [h, m] = d.time.split(':').map(Number); x.setHours(h - 1, m);
+    return `${ymd(x)}T${pad(x.getHours())}:${pad(x.getMinutes())}`;
   }
+  const n = Number(d.remindMode.slice(1)); if (isNaN(n)) return null;
+  return shift(d.due, -n) + 'T' + tm;
 }
 
 /* ---- Unterrichtsstunde ---- */
@@ -1343,7 +1500,8 @@ function settingsSheet() {
       <div class="status" id="pStat"></div>`
     : '<div class="muted small" style="margin-bottom:12px">Benachrichtigungen gehen nur in der installierten App am Handy.</div>'}
     <div class="f"><label>Standard für neue Hausübungen</label><select class="in" id="sDef" data-chg="sdef">
-      ${[['none', 'Keine'], ['eve', 'Am Vortag, 18:00'], ['morning', 'Am Tag, 07:00']].map(([v, n]) => `<option value="${v}" ${data.settings.defRemind === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      ${REM_OPTS.filter(([v]) => v !== 'h1' && v !== 'date').map(([v, n]) => `<option value="${v}" ${data.settings.defRemind === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+    <div class="f"><label>Standard-Uhrzeit für Erinnerungen</label><input class="in" type="time" data-chg="sdeft" value="${esc(data.settings.defRemindTime || '16:00')}"></div>
     <div class="f"><label>Abend-Übersicht (was bis morgen fällig ist)</label><select class="in" id="sDig" data-chg="sdig">
       <option value="" ${data.settings.digestHour == null ? 'selected' : ''}>Aus</option>
       ${[15, 16, 17, 18, 19, 20, 21].map(h => `<option value="${h}" ${data.settings.digestHour === h ? 'selected' : ''}>um ${h}:00</option>`).join('')}</select></div>
@@ -1371,7 +1529,7 @@ function loadSample() {
   const t = today();
   const it = (o) => data.items.push(Object.assign({ id: uid(), type: 'hw', time: '', notes: '', done: false, doneAt: null, sample: true, remindMode: 'none', remindAt: null, createdAt: t }, o));
   const nx = s => (nextLessons(s, t, 1)[0] || { day: shift(t, 2) }).day;
-  it({ title: 'S. 84, Nr. 3–7', subject: 'M', due: nx('M'), remindMode: 'eve', remindAt: shift(nx('M'), -1) + 'T18:00', notes: 'Nr. 6 mit Lösungsformel' });
+  it({ title: 'S. 84, Nr. 3–7', subject: 'M', due: nx('M'), remindMode: 'd1', remindTime: '16:00', remindAt: shift(nx('M'), -1) + 'T16:00', notes: 'Nr. 6 mit Lösungsformel' });
   it({ title: 'Vokabeln Unidad 3 lernen', subject: 'SPA', due: shift(t, -1) });
   it({ title: 'Essay „Social Media“ (250 Wörter)', subject: 'E', due: nx('E') });
   it({ title: 'Lesetagebuch Kapitel 4–6', subject: 'D', due: shift(nx('D'), 7) });
@@ -1407,14 +1565,16 @@ const ACT = {
   dtype: d => { readItemForm(); draft.type = d.t; redrawSheet(); },
   dsub: d => { readItemForm(); setDraftSubject(d.id); redrawSheet(); },
   qdue: d => { readItemForm(); draft.due = d.d; draft.dueAuto = false; redrawSheet(); },
+  rmode: d => { readItemForm(); draft.remindMode = d.m; if (d.m === 'date' && !draft.remindDate) draft.remindDate = shift(draft.due || today(), -1); redrawSheet(); },
+  rtime: d => { readItemForm(); draft.remindTime = d.t; redrawSheet(); },
   saveitem: () => {
     readItemForm();
     if (!draft.title) { toast('Bitte einen Titel eingeben'); $('#fTitle').focus(); return; }
     if (draft.type === 'event' && !draft.due) { toast('Bitte ein Datum wählen'); return; }
     let remindAt = calcRemind(draft), skipped = false;
-    if (remindAt && remindAt < nowStr() && draft.remindMode !== 'custom') { remindAt = null; skipped = true; }
+    if (remindAt && remindAt < nowStr() && draft.remindMode !== 'date') { remindAt = null; skipped = true; }
     const obj = { type: draft.type, title: draft.title, subject: draft.subject, due: draft.due, time: draft.time, notes: draft.notes,
-      remindMode: draft.remindMode, remindAt, remindCustom: draft.remindMode === 'custom' ? draft.remindCustom : '' };
+      remindMode: draft.remindMode, remindTime: draft.remindTime, remindDate: draft.remindMode === 'date' ? draft.remindDate : '', remindAt };
     if (draft.id) Object.assign(data.items.find(i => i.id === draft.id), obj);
     else data.items.push(Object.assign({ id: uid(), done: false, doneAt: null, createdAt: today() }, obj));
     if (skipped) toast('Gespeichert – Erinnerungszeit war schon vorbei');
@@ -1456,7 +1616,9 @@ const ACT = {
     ui.sel = ui.month === today().slice(0, 7) ? today() : ymd(nd); render(); loadWindow(ui.month); },
   mtoday: () => { ui.month = today().slice(0, 7); ui.sel = today(); render(); },
   wk: d => { ui.week = shift(curWeek(), 7 * Number(d.n)); render(); loadWindow(ui.week.slice(0, 7)); },
-  wtoday: () => { ui.week = null; render(); },
+  wtoday: () => { ui.week = null; ui.sel = today(); render(); },
+  wsel: d => { ui.sel = d.d; render(); },
+  ptoggle: () => setPanel(!ui.panelUp),
   gowk: d => { ui.week = weekStart(d.d); ui.calMode = 'week'; LS.set('sp_calmode', 'week'); render(); window.scrollTo(0, 0); },
   calmode: d => { ui.calMode = d.m; LS.set('sp_calmode', d.m); render(); },
   seg: d => { ui.taskSeg = d.s; ui.subj = ''; render(); },
@@ -1509,12 +1671,11 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => {
   const el = e.target;
-  if (el.dataset.chg === 'rem') { $('#fCustomWrap').style.display = el.value === 'custom' ? '' : 'none';
-    if (el.value === 'custom' && !$('#fCustom').value && $('#fDue').value) $('#fCustom').value = shift($('#fDue').value, -1) + 'T18:00'; }
   if (el.dataset.chg === 'sdef') { data.settings.defRemind = el.value; commit(); }
   if (el.dataset.chg === 'sdig') { data.settings.digestHour = el.value === '' ? null : Number(el.value); commit(); }
   if (el.dataset.chg === 'ttend') { data.settings.ttEnd = el.value; commit(); }
-  if (el.id === 'fDue' && draft) { readItemForm(); redrawSheet(); }
+  if ((el.id === 'fDue' || el.id === 'fTime' || el.id === 'fRemTime' || el.id === 'fRemDate') && draft) { readItemForm(); redrawSheet(); }
+  if (el.dataset.chg === 'sdeft') { if (el.value) { data.settings.defRemindTime = el.value; commit(); } }
   if (el.dataset.cal) { const v = el.value.trim(); if (v) cfg.calNames[el.dataset.cal] = v; else delete cfg.calNames[el.dataset.cal]; saveCfg(); render(); }
   if (el.dataset.subj) { const s = subjOf(el.dataset.subj); if (s && el.value.trim()) { s.name = el.value.trim(); commit(); } }
   if (el.id === 'sName') { cfg.name = el.value.trim(); saveCfg(); render(); }
@@ -1615,6 +1776,8 @@ $('#setBtn').insertAdjacentHTML('afterbegin', ic('gear'));
 $('#syncBtn').insertAdjacentHTML('afterbegin', ic('refresh'));
 $('#fab').innerHTML = ic('plus');
 if (!TABS.some(([k]) => k === ui.tab)) ui.tab = 'today';
+if (!connected()) archiveOld();
+window.addEventListener('resize', () => { if (document.body.classList.contains('fixed')) document.documentElement.style.setProperty('--hdr', $('header').offsetHeight + 'px'); });
 render();
 if (window.__linked) toast('Verbunden ✓ Lade deinen Kalender …');
 if (new URLSearchParams(location.search).has('neu')) { try { history.replaceState(null, '', location.pathname); } catch (e) {} setTimeout(() => editItem(null), 300); }

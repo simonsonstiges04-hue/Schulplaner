@@ -1,5 +1,5 @@
 /* Schulplaner – Service Worker: offline verfügbar, Updates automatisch, Benachrichtigungen */
-const CACHE = 'schulplaner-v2.1';
+const CACHE = 'schulplaner-v2.2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/badge-96.png'];
 
 self.addEventListener('install', e => {
